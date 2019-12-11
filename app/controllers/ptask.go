@@ -1,12 +1,13 @@
 package controllers
 
 import (
+	"fmt"
 	"github.com/astaxie/beego"
 	"strconv"
 	"time"
-	"webcron-source/app/goreman"
-	"webcron-source/app/libs"
-	"webcron-source/app/models"
+	"cronJob/app/goreman"
+	"cronJob/app/libs"
+	"cronJob/app/models"
 )
 
 type PTaskController struct {
@@ -25,6 +26,7 @@ func (this *PTaskController) Add()  {
 		PTask.IntervalTime, _ = this.GetInt64("goreman_interval_time")
 		PTask.Status, _ = this.GetInt8("goreman_status")
 		PTask.OutputFile= this.GetString("goreman_output_file", "")
+		PTask.Num, _ = this.GetInt("goreman_num")
 		PTask.RunStatus = models.PTASK_STATUS_NOT_STARTED
 		PTask.UpdateTime = time.Now().Unix()
 
@@ -36,7 +38,13 @@ func (this *PTaskController) Add()  {
 			if err != nil {
 				this.ajaxMsg("创建任务输入文件时间错误"+err.Error(), MSG_ERR)
 			}
-
+		}
+		maxProcNum := 20;
+		if  maxProcNumConfig, error := beego.AppConfig.Int("ptask.max_proc_num"); error != nil {
+			maxProcNum = maxProcNumConfig
+		}
+		if PTask.Num > maxProcNum || PTask.Num < 1 {
+			this.ajaxMsg(fmt.Sprintf("单个任务最多设置%d个进程，最少1个", maxProcNum), MSG_ERR)
 		}
 
 		if _, err := PTask.Add(); err != nil {
@@ -81,6 +89,7 @@ func (this *PTaskController) Edit()  {
 		pTaskModel.Status, _ = this.GetInt8("goreman_status")
 		pTaskModel.OutputFile= this.GetString("goreman_output_file", "")
 		pTaskModel.NotifyUsers= this.GetString("goreman_notify_users", "")
+		pTaskModel.Num, _ = this.GetInt("goreman_num")
 		pTaskModel.UpdateTime = time.Now().Unix()
 
 		if pTaskModel.Name == "" || pTaskModel.Command == "" {
@@ -91,6 +100,14 @@ func (this *PTaskController) Edit()  {
 			if err != nil {
 				this.ajaxMsg("创建任务输入文件时间错误"+err.Error(), MSG_ERR)
 			}
+		}
+
+		maxProcNum := 20;
+		if  maxProcNumConfig, error := beego.AppConfig.Int("ptask.max_proc_num"); error != nil {
+			maxProcNum = maxProcNumConfig
+		}
+		if pTaskModel.Num > maxProcNum || pTaskModel.Num < 1 {
+			this.ajaxMsg(fmt.Sprintf("单个任务最多设置%d个进程，最少1个", maxProcNum), MSG_ERR)
 		}
 
 		if err := pTaskModel.Update(); err != nil {

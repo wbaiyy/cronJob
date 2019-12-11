@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"webcron-source/app/libs"
+	"cronJob/app/libs"
 )
 
 type HelpController struct {

@@ -20,36 +20,39 @@ func terminateProc(proc string, _ os.Signal) error {
 	}
 	defer dll.Release()
 
-	pid := procs[proc].Cmd.Process.Pid
+	for _, cmd := range procs[proc].CmdList {
+		//pid := procs[proc].Cmd.Process.Pid
+		pid := cmd.Process.Pid
 
-	f, err := dll.FindProc("AttachConsole")
-	if err != nil {
-		return err
-	}
-	r1, _, err := f.Call(uintptr(pid))
-	if r1 == 0 && err != syscall.ERROR_ACCESS_DENIED {
-		return err
-	}
+		f, err := dll.FindProc("AttachConsole")
+		if err != nil {
+			return err
+		}
+		r1, _, err := f.Call(uintptr(pid))
+		if r1 == 0 && err != syscall.ERROR_ACCESS_DENIED {
+			return err
+		}
 
-	f, err = dll.FindProc("SetConsoleCtrlHandler")
-	if err != nil {
-		return err
-	}
-	r1, _, err = f.Call(0, 1)
-	if r1 == 0 {
-		return err
-	}
-	f, err = dll.FindProc("GenerateConsoleCtrlEvent")
-	if err != nil {
-		return err
-	}
-	r1, _, err = f.Call(windows.CTRL_BREAK_EVENT, uintptr(pid))
-	if r1 == 0 {
-		return err
-	}
-	r1, _, err = f.Call(windows.CTRL_C_EVENT, uintptr(pid))
-	if r1 == 0 {
-		return err
+		f, err = dll.FindProc("SetConsoleCtrlHandler")
+		if err != nil {
+			return err
+		}
+		r1, _, err = f.Call(0, 1)
+		if r1 == 0 {
+			return err
+		}
+		f, err = dll.FindProc("GenerateConsoleCtrlEvent")
+		if err != nil {
+			return err
+		}
+		r1, _, err = f.Call(windows.CTRL_BREAK_EVENT, uintptr(pid))
+		if r1 == 0 {
+			return err
+		}
+		r1, _, err = f.Call(windows.CTRL_C_EVENT, uintptr(pid))
+		if r1 == 0 {
+			return err
+		}
 	}
 	return nil
 }

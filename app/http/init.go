@@ -5,7 +5,7 @@ import (
 	"github.com/astaxie/beego"
 	"html/template"
 	"net/http"
-	"webcron-source/app/controllers"
+	"cronJob/app/controllers"
 )
 
 const VERSION = "1.0.0"
@@ -21,6 +21,7 @@ func InitHttp(done chan bool) {
 
 	go func() {
 		defer func() {
+			fmt.Println("http done")
 			done<- true
 		}()
 		beego.Run(fmt.Sprintf("%s:%s", beego.AppConfig.String("httpaddr"), beego.AppConfig.String("httpport")))

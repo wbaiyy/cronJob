@@ -1,7 +1,7 @@
 package goreman
 
 import (
-	"webcron-source/app/models"
+	"cronJob/app/models"
 	"os/exec"
 	"sync"
 )
@@ -19,7 +19,7 @@ type ProcInfo struct {
 	name       string
 	cmdline    string
 	Cmd        *exec.Cmd
-	Cmds       []*exec.Cmd
+	CmdList      map[string]*exec.Cmd
 	port       uint
 	setPort    bool
 	colorIndex int
@@ -42,10 +42,11 @@ type ProcInfo struct {
 	OutputFile string
 	NotifyUser string
 	IsStartSuccess bool
+	Num int  //启动数量
 }
 
 
-func New(pTaslModel *models.PTask) *ProcInfo {
+func NewProc(pTaslModel *models.PTask) *ProcInfo {
 	this := &ProcInfo {
 		name : pTaslModel.Name,
 		cmdline : pTaslModel.Command,
@@ -55,6 +56,8 @@ func New(pTaslModel *models.PTask) *ProcInfo {
 		IntervalTime : pTaslModel.IntervalTime,
 		OutputFile : pTaslModel.OutputFile,
 		NotifyUser : pTaslModel.NotifyUsers,
+		Num: pTaslModel.Num,
+		CmdList: make(map[string] *exec.Cmd),
 	}
 	this.cond = sync.NewCond(&this.mu)
 

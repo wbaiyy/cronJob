@@ -25,6 +25,7 @@ type PTask struct {
 	RunStatus int8
 	OutputFile string
 	NotifyUsers string
+	Num int
 }
 
 func (g *PTask) TableName() string {

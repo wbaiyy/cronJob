@@ -3,7 +3,7 @@ package goreman
 import (
 	"fmt"
 	"time"
-	"webcron-source/app/models"
+	"cronJob/app/models"
 )
 var retryChans map[string]chan bool
 
@@ -25,7 +25,7 @@ func initProcs() {
 		if pTask.Status != 1 {
 			continue
 		}
-		procs[pTask.Name] = New(pTask)
+		procs[pTask.Name] = NewProc(pTask)
 	}
 }
 

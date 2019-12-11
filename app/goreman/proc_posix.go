@@ -17,27 +17,34 @@ var cmdStart = []string{"/bin/sh", "-c"}
 var procAttrs = &unix.SysProcAttr{Setpgid: true}
 
 func terminateProc(proc string, signal os.Signal) error {
-	p := procs[proc].Cmd.Process
-	if p == nil {
-		return nil
-	}
 
-	pgid, err := unix.Getpgid(p.Pid)
-	if err != nil {
-		return err
-	}
+	for _, cmd := range procs[proc].CmdList {
+		p := cmd.Process
+		if p == nil {
+			return nil
+		}
 
-	// use pgid, ref: http://unix.stackexchange.com/questions/14815/process-descendants
-	pid := p.Pid
-	if pgid == p.Pid {
-		pid = -1 * pid
-	}
+		pgid, err := unix.Getpgid(p.Pid)
+		if err != nil {
+			return err
+		}
 
-	target, err := os.FindProcess(pid)
-	if err != nil {
-		return err
+		// use pgid, ref: http://unix.stackexchange.com/questions/14815/process-descendants
+		pid := p.Pid
+		if pgid == p.Pid {
+			pid = -1 * pid
+		}
+
+		target, err := os.FindProcess(pid)
+		if err != nil {
+			return err
+		}
+		err = target.Signal(signal)
+		if err != nil {
+			return err
+		}
 	}
-	return target.Signal(signal)
+	return nil
 }
 
 // killProc kills the proc with pid pid, as well as its children.

@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"webcron-source/app/jobs"
-	"webcron-source/app/libs"
-	"webcron-source/app/models"
+	"cronJob/app/jobs"
+	"cronJob/app/libs"
+	"cronJob/app/models"
 )
 
 type SsoPerson struct {

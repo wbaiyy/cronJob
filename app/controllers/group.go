@@ -2,8 +2,8 @@ package controllers
 
 import (
 	"github.com/astaxie/beego"
-	"webcron-source/app/libs"
-	"webcron-source/app/models"
+	"cronJob/app/libs"
+	"cronJob/app/models"
 	"strconv"
 	"strings"
 )

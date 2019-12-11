@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"webcron-source/app/libs"
-	"webcron-source/app/models"
+	"cronJob/app/libs"
+	"cronJob/app/models"
 	"os"
 	"os/exec"
 	"sync"
@@ -30,11 +30,11 @@ type procStatus struct {
 	status int8
 }
 
-
 // spawnProc starts the specified proc, and returns any error from running it.
 func spawnProc(proc string, errCh chan<- procChan, logger *clogger) {
 	procObj := procs[proc]
 
+	procObj.mu.Lock()
 	fmt.Fprintf(logger, "Starting %s!!!\n", proc)
 	//bufOut := new(bytes.Buffer)
 	bufErr := new(bytes.Buffer)
@@ -62,7 +62,11 @@ func spawnProc(proc string, errCh chan<- procChan, logger *clogger) {
 		fmt.Fprintf(logger, "Failed to start %s: %s\n", proc, err)
 		return
 	}
-	procObj.Cmd = cmd
+
+	//procObj.Cmd = cmd
+	currentNum := len(procObj.CmdList)
+	procName := getProcName( proc, currentNum)
+	procObj.CmdList[procName] = cmd
 	procObj.stoppedBySupervisor = false
 	procObj.IsStartSuccess = false
 	procObj.mu.Unlock()
@@ -78,8 +82,17 @@ func spawnProc(proc string, errCh chan<- procChan, logger *clogger) {
 		procObj.IsStartSuccess = true
 	}
 
-	procObj.mu.Lock()
-	procObj.cond.Broadcast()
+	//procObj.mu.Lock()
+
+	delete(procObj.CmdList, procName);
+	if len(procObj.CmdList) == 0 {
+		procStatusChan<- procStatus {
+			name: proc,
+			status:PROC_STATUS_NOT_START,
+		}
+
+		procObj.cond.Broadcast()
+	}
 
 	if err != nil && procObj.stoppedBySupervisor == false {
 		select {
@@ -98,11 +111,7 @@ func spawnProc(proc string, errCh chan<- procChan, logger *clogger) {
 		}
 	}
 	procObj.waitErr = err
-	procObj.Cmd = nil
-	procStatusChan<- procStatus {
-		name: proc,
-		status:PROC_STATUS_NOT_START,
-	}
+
 	fmt.Fprintf(logger, "Terminating %s\n", proc)
 	logger.loggerDone <- true
 }
@@ -121,7 +130,7 @@ func stopProc(proc string, signal os.Signal) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	if p.Cmd == nil {
+	if len(p.CmdList) == 0 {
 		return nil
 	}
 	p.stoppedBySupervisor = true
@@ -134,8 +143,11 @@ func stopProc(proc string, signal os.Signal) error {
 	timeout := time.AfterFunc(10*time.Second, func() {
 		p.mu.Lock()
 		defer p.mu.Unlock()
-		if p, ok := procs[proc]; ok && p.Cmd != nil {
-			err = killProc(p.Cmd.Process)
+		if p, ok := procs[proc]; ok && p.CmdList != nil {
+			for _,cmd := range p.CmdList {
+				err = killProc(cmd.Process)
+			}
+
 		}
 	})
 	p.cond.Wait()
@@ -159,19 +171,19 @@ func startProc(proc string, wg *sync.WaitGroup, errCh chan<- procChan, isRetry b
 		return errors.New("unknown proc: " + proc)
 	}
 
-	//if  p.RunStatus == PROC_STATUS_STOPPED {
-	//	return errors.New(fmt.Sprintf("proc[%s]: is stopped status" , proc))
-	//}
-	p.mu.Lock()
-	if procs[proc].Cmd != nil {
-		p.mu.Unlock()
+	if len(procs[proc].CmdList) >= procs[proc].Num {
 		return nil
 	}
 
+	//if  p.RunStatus == PROC_STATUS_STOPPED {
+	//	return errors.New(fmt.Sprintf("proc[%s]: is stopped status" , proc))
+	//}
+	//p.mu.Lock()
+
 	if isRetry {
 		if  procs[proc].RunStatus == PROC_STATUS_STOPPED {
-			p.mu.Unlock()
-			return errors.New(fmt.Sprintf("【任务进程-%s】任务是暂停状态，无需自动启动", proc))
+			//p.mu.Unlock()
+			return errors.New(fmt.Sprintf("任务进程【%s】是暂停状态，无需自动启动", proc))
 		}
 
 		if procs[proc].FailureTimes < procs[proc].MaxRetryTimes {
@@ -179,17 +191,18 @@ func startProc(proc string, wg *sync.WaitGroup, errCh chan<- procChan, isRetry b
 				procs[proc].FailureTimes++
 			}
 		} else {
-			p.mu.Unlock()
+			//p.mu.Unlock()
 			//todo vv或邮件通知
-			msgCenter := libs.NewMsgCenterService()
-
 			msg := fmt.Sprintf("【任务进程-%s】任务已停止，已经达到最大重启次数:%d", proc, procs[proc].MaxRetryTimes)
-			sendMapper := make(map[string]string)
-			sendMapper["vv"] = procs[proc].NotifyUser
-			err := msgCenter.Send("常驻任务系统", msg, sendMapper)
-			if err != nil {
-				msg  += err.Error()
-				return errors.New(msg)
+			if procs[proc].NotifyUser != "" {
+				msgCenter := libs.NewMsgCenterService()
+				sendMapper := make(map[string]string)
+				sendMapper["vv"] = procs[proc].NotifyUser
+				err := msgCenter.Send("常驻任务系统", msg, sendMapper)
+				if err != nil {
+					msg  += err.Error()
+					return errors.New(msg)
+				}
 			}
 
 			return errors.New(msg)
@@ -203,17 +216,21 @@ func startProc(proc string, wg *sync.WaitGroup, errCh chan<- procChan, isRetry b
 	procObj := procs[proc]
 	logger, error := createLogger(proc, procObj.colorIndex);
 	if error != nil {
-		p.mu.Unlock()
+		//p.mu.Unlock()
 		return error
 	}
 
-	go func() {
-		spawnProc(proc, errCh, logger)
-		if wg != nil {
-			wg.Done()
-		}
-		p.mu.Unlock()
-	}()
+	num := procObj.Num - len(procObj.CmdList)
+	for i := num; i > 0 ;i-- {
+		go func() {
+			spawnProc(proc, errCh, logger)
+			if wg != nil {
+				wg.Done()
+			}
+			//p.mu.Unlock()
+		}()
+	}
+
 	return nil
 }
 
@@ -249,7 +266,14 @@ func StartProcs(sc <-chan os.Signal, rpcCh <-chan *RpcMessage, exitOnError bool)
 
 	for name, proc := range procs {
 		if proc.RunStatus == PROC_STATUS_RUNNING {
-			startProc(name, &wg, errCh,false)
+			if error := startProc(name, &wg, errCh,false); error != nil {
+				procs[name].RunStatus = PROC_STATUS_NOT_START
+				models.SetPtaskRunningStatus(name, procs[name].RunStatus)
+				saveExitLog(procChan{
+					name: name,
+					err: error,
+				})
+			}
 		}
 	}
 	allProcsDone := make(chan struct{}, 1)
@@ -281,7 +305,6 @@ func StartProcs(sc <-chan os.Signal, rpcCh <-chan *RpcMessage, exitOnError bool)
 		case sig := <-sc:
 			return stopProcs(sig)
 		case procStatus := <- procStatusChan:
-			//fmt.Println("Receive proc status change:", procStatus.name, procStatus.status )
 			procs[procStatus.name].RunStatus = procStatus.status
 			//整个系统退出时，保留运行时状态
 			if !IsEnd {
@@ -344,4 +367,8 @@ func saveExitLog(procErr procChan) {
 			}
 		}
 	}()
+}
+
+func getProcName(name string, num int) string {
+	return fmt.Sprintf("%s-%d", name, num)
 }

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/astaxie/beego"
 	"github.com/wbaiyy/goreman"
-	"webcron-source/app/models"
+	"cronJob/app/models"
 	"os"
 	"regexp"
 	"strconv"
@@ -147,7 +147,7 @@ func ResetRetryTime(procNames []string) {
 
 func PullProcs(pTaslModel *models.PTask) {
 	if _, ok :=procs[pTaslModel.Name]; !ok {
-		procs[pTaslModel.Name] =  New(pTaslModel)
+		procs[pTaslModel.Name] =  NewProc(pTaslModel)
 
 	}
 }

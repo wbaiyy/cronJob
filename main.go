@@ -2,14 +2,15 @@ package main
 
 import (
 	"github.com/astaxie/beego"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
-	"webcron-source/app/goreman"
-	"webcron-source/app/http"
-	"webcron-source/app/jobs"
-	_ "webcron-source/app/mail"
-	"webcron-source/app/models"
+	"cronJob/app/goreman"
+	"cronJob/app/http"
+	"cronJob/app/jobs"
+	_ "cronJob/app/mail"
+	"cronJob/app/models"
 )
 
 func main() {
@@ -20,6 +21,7 @@ func main() {
 		goreman.IsEnd = true
 		if err := goreman.RunOpt("stop-all"); err != nil {
 			//停止所有进程失败
+			log.Fatal(err)
 		}
 
 	}()

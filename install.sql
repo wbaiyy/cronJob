@@ -59,3 +59,23 @@ CREATE TABLE `t_user` (
 
 INSERT INTO `t_user` (`id`, `user_name`, `email`, `password`, `salt`, `last_login`, `last_ip`, `status`)
 VALUES (1,'admin','admin@example.com','7fef6171469e80d32c0559f88b377245','',0,'',0);
+
+
+CREATE TABLE `t_ptasks` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  `name` varchar(64) NOT NULL DEFAULT '' COMMENT '任务名称',
+  `command` varchar(255) NOT NULL DEFAULT '' COMMENT '任务命令脚本',
+  `retry_times` tinyint(1) unsigned NOT NULL DEFAULT '0' COMMENT '重试次数',
+  `interval_time` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '重启间隔时间',
+  `description` varchar(255) NOT NULL DEFAULT '' COMMENT '描述',
+  `group_id` tinyint(2) NOT NULL DEFAULT '0' COMMENT '分组ID',
+  `update_time` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '最后更新时间',
+  `run_status` tinyint(1) unsigned NOT NULL DEFAULT '1' COMMENT '运行状态，1:未开启,2运行中,3暂停中',
+  `status` tinyint(1) unsigned NOT NULL DEFAULT '1' COMMENT '任务状态1:可用，2关闭',
+  `output_file` varchar(255) NOT NULL DEFAULT '' COMMENT '任务输出文件',
+  `execute_ips` varchar(255) NOT NULL DEFAULT '' COMMENT '进程执行的服务器IPs',
+  `notify_users` varchar(255) NOT NULL DEFAULT '' COMMENT '通知人工号,多个用逗号隔开',
+  `num` int(11) unsigned NOT NULL DEFAULT '1' COMMENT '进程数',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_name` (`name`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8;

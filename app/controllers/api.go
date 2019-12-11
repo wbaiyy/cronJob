@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"webcron-source/app/goreman"
-	"webcron-source/app/models"
+	"cronJob/app/goreman"
+	"cronJob/app/models"
 )
 
 type ApiController struct {
